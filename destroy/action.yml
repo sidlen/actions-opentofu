@@ -1,0 +1,16 @@
+name: 'Tofu destroy'
+description: 'Run tofu destroy'
+author: 'sidlen'
+inputs:
+  manifest_path:
+    description: 'Realative path to directory with tofu (terraform) manifests (.tf) files, default - workspace directory'
+    required: false
+    default: "${{ env.TOFU_MANIFEST_DIR }}"
+runs:
+  using: 'composite'
+  steps:
+    - name: Tofu destroy
+      run: tofu -chdir="${{ gitea.workspace }}"/"${{ inputs.manifest_path }}" apply -destroy -auto-approve
+      shell: bash
+      env:
+        TF_VAR_OWNER: "${{ gitea.actor }}"
