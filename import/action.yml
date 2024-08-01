@@ -3,7 +3,7 @@ description: 'Import existing resources into the Tofu (terraform) state based on
 author: 'sidlen'
 inputs:
   manifest_path:
-    description: 'Realative path to directory with tofu (terraform) manifests files, default - workspace directory'
+    description: 'Realative path to directory with tofu (terraform) manifests files'
     required: false
     default: "${{ env.TOFU_MANIFEST_DIR }}"
   plan_json:
@@ -23,4 +23,3 @@ runs:
         TF_VAR_OWNER: "${{ gitea.actor }}"
         TOFU_MANIFEST_DIR: "${{ inputs.manifest_path }}"
         TOFU_WORKSPACE: "${{ gitea.workspace }}"
-
