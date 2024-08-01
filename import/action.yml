@@ -21,4 +21,6 @@ runs:
       shell: bash
       env:
         TF_VAR_OWNER: "${{ gitea.actor }}"
+        TOFU_MANIFEST_DIR: "${{ inputs.manifest_path }}"
+        TOFU_WORKSPACE: "${{ gitea.workspace }}"
 
