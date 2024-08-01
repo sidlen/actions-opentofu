@@ -21,7 +21,7 @@ runs:
       run: |
         if [ "${{ inputs.save_plan }}" == "true" ]; then
           tofu -chdir="${{ gitea.workspace }}"/"${{ inputs.manifest_path }}" plan -out=tf_plan
-          tofu show -json tf_plan > plan.json
+          tofu -chdir="${{ gitea.workspace }}"/"${{ inputs.manifest_path }}" show -json tf_plan > plan.json
         else
           tofu -chdir="${{ gitea.workspace }}"/"${{ inputs.manifest_path }}" plan
         fi
@@ -32,6 +32,7 @@ runs:
       if: ${{ inputs.save_plan == 'true' }}
       id: json_output
       run: |
+        cd "${{ gitea.workspace }}"/"${{ inputs.manifest_path }}"
         echo "::set-output name=plan_json::$(cat plan.json)"
       shell: bash
 
