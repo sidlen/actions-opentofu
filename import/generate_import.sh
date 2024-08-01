@@ -1,8 +1,6 @@
 #!/bin/bash
 MANIFEST_DIR=${TOFU_WORKSPACE}/${TOFU_MANIFEST_DIR}
-TOFU_OPTIONS="
-  -chdir=$MANIFEST_DIR
-"
+TOFU_OPTIONS="-chdir=$MANIFEST_DIR"
 
 # Чтение JSON плана из файла
 plan_json=$(cat plan.json)
@@ -27,6 +25,12 @@ for ((i=0; i<module_count; i++)); do
   module_name=$(echo "$plan_json" | jq -r ".planned_values.root_module.child_modules[$i].address")
   resource_count=$(echo "$plan_json" | jq ".planned_values.root_module.child_modules[$i].resources | length")
   echo "Найдено ресурсов в $module_name: $resource_count"
+  datacenter=$(echo "$plan_json" | jq -r --arg module_name "$module_name" '
+    .prior_state.values.root_module.child_modules[]
+    | select(.resources[].address | contains($module_name))
+    | .resources[]
+    | select(.type == "vsphere_datacenter" and .mode == "data")
+    | .values.name')
   for ((j=0; j<resource_count; j++)); do
     resource_type=$(echo "$plan_json" | jq -r ".planned_values.root_module.child_modules[$i].resources[$j].type")
     echo "Обрабатывается ресурс $j в $module_name типа $resource_type"
@@ -36,7 +40,7 @@ for ((i=0; i<module_count; i++)); do
       name=$(echo "$plan_json" | jq -r ".planned_values.root_module.child_modules[$i].resources[$j].values.name")
       echo "Ресурс $j в $module_name имеет адрес $address, папку $folder, имя $name"
       if [ -n "$folder" ] && [ -n "$name" ]; then
-        import_command="tofu ${TOFU_OPTIONS} import $address $folder/$name"
+        import_command="tofu ${TOFU_OPTIONS} import $address $datacenter/vm/$folder/$name"
         import_commands+=("$import_command")
         echo "Команда для импорта: $import_command"
         $import_command
