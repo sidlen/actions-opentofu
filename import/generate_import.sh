@@ -40,7 +40,7 @@ for ((i=0; i<module_count; i++)); do
       name=$(echo "$plan_json" | jq -r ".planned_values.root_module.child_modules[$i].resources[$j].values.name")
       echo "Ресурс $j в $module_name имеет адрес $address, папку $folder, имя $name"
       if [ -n "$folder" ] && [ -n "$name" ]; then
-        import_command="tofu ${TOFU_OPTIONS} import $address $datacenter/vm/$folder/$name"
+        import_command="tofu ${TOFU_OPTIONS} import $address /$datacenter/vm/$folder/$name"
         import_commands+=("$import_command")
         echo "Команда для импорта: $import_command"
         $import_command
