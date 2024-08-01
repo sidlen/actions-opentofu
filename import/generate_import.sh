@@ -30,7 +30,7 @@ for ((i=0; i<module_count; i++)); do
     | select(.resources[].address | contains($module_name))
     | .resources[]
     | select(.type == "vsphere_datacenter" and .mode == "data")
-    | .values.name')
+    | .values.name'| head -n 1)
   for ((j=0; j<resource_count; j++)); do
     resource_type=$(echo "$plan_json" | jq -r ".planned_values.root_module.child_modules[$i].resources[$j].type")
     echo "Обрабатывается ресурс $j в $module_name типа $resource_type"
