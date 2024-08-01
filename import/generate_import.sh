@@ -1,4 +1,8 @@
 #!/bin/bash
+MANIFEST_DIR=${TOFU_WORKSPACE}/${MANIFEST_DIR}
+TOFU_OPTIONS="
+  -chdir=$MANIFEST_DIR
+"
 
 # Чтение JSON плана из файла
 plan_json=$(cat plan.json)
@@ -32,7 +36,7 @@ for ((i=0; i<module_count; i++)); do
       name=$(echo "$plan_json" | jq -r ".planned_values.root_module.child_modules[$i].resources[$j].values.name")
       echo "Ресурс $j в $module_name имеет адрес $address, папку $folder, имя $name"
       if [ -n "$folder" ] && [ -n "$name" ]; then
-        import_command='tofu -chdir="${TOFU_WORKSPACE}/${TOFU_MANIFEST_DIR}" import $address $folder/$name'
+        import_command="tofu ${TOFU_OPTIONS} import $address $folder/$name"
         import_commands+=("$import_command")
         echo "Команда для импорта: $import_command"
         $import_command
