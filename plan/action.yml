@@ -6,11 +6,36 @@ inputs:
     description: 'Realative path to directory with tofu (terraform) manifests (.tf) files, default - workspace directory'
     required: false
     default: "${{ env.TOFU_MANIFEST_DIR }}"
+  save_plan:
+    description: 'Save plan output to a file and convert to JSON'
+    required: false
+    default: 'false'
+
 runs:
   using: 'composite'
   steps:
-    - name: Tofu plan
-      run: tofu -chdir="${{ gitea.workspace }}"/"${{ inputs.manifest_path }}" plan
+    - name: Install jq
+      run: apt install jq
+      shell: bash
+    - name: Tofu import script
+      run: |
+        if [ "${{ inputs.save_plan }}" == "true" ]; then
+          tofu -chdir="${{ gitea.workspace }}"/"${{ inputs.manifest_path }}" plan -out=tf_plan
+          tofu show -json tf_plan > plan.json
+        else
+          tofu -chdir="${{ gitea.workspace }}"/"${{ inputs.manifest_path }}" plan
+        fi
       shell: bash
       env:
         TF_VAR_OWNER: "${{ gitea.actor }}"
+    - name: Set plan.json output
+      if: ${{ inputs.save_plan == 'true' }}
+      id: json_output
+      run: |
+        echo "::set-output name=plan_json::$(cat plan.json)"
+      shell: bash
+
+outputs:
+  plan_json:
+    description: 'JSON output of the plan'
+    value: ${{ steps.json_output.outputs.plan_json }}

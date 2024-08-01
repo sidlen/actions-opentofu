@@ -1,0 +1,25 @@
+name: 'Tofu import'
+description: 'Import existing resources into the Tofu (terraform) state based on manifest'
+author: 'sidlen'
+inputs:
+  manifest_path:
+    description: 'Realative path to directory with tofu (terraform) manifests files, default - workspace directory'
+    required: false
+    default: "${{ env.TOFU_MANIFEST_DIR }}"
+  plan_json:
+    description: 'Saved plan.json file from plan action'
+    required: true
+    default: "plan.json"
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Tofu import
+      run: |
+        chmod +x "${{ gitea.action_path }}"/generate_import.sh
+        cd "${{ gitea.workspace }}"/"${{ inputs.manifest_path }}"
+        "${{ gitea.action_path }}"/generate_import.sh
+      shell: bash
+      env:
+        TF_VAR_OWNER: "${{ gitea.actor }}"
+
