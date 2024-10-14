@@ -30,7 +30,7 @@ import_resource() {
   local import_path="$2"
   local resource_type="$3"
 
-  import_command="tofu ${TOFU_OPTIONS} import '$address' $import_path"
+  import_command="tofu ${TOFU_OPTIONS} import '$address' '$import_path'"
   import_commands+=("$import_command")
   echo "Команда для импорта ресурса типа $resource_type: $import_command"
   $import_command
@@ -103,7 +103,7 @@ process_vcd_vapp_vm() {
     local disk_count=$(echo "$plan_json" | jq ".planned_values.root_module.child_modules[$module_name].resources[$resource_index].values.internal_disk | length")
     for ((k=0; k<disk_count; k++)); do
       disk_label=$(echo "$plan_json" | jq -r ".planned_values.root_module.child_modules[$module_name].resources[$resource_index].values.internal_disk[$k].disk_id")
-      import_resource '$address.disk[$k]' "$org.$vdc.$vapp_name.$name.$disk_label" "vcd_vm_internal_disk"
+      import_resource "$address.disk[$k]" "$org.$vdc.$vapp_name.$name.$disk_label" "vcd_vm_internal_disk"
     done
   else
     echo "Пропуск ресурса $resource_index в $module_name: организация, vApp или имя ВМ отсутствуют"
