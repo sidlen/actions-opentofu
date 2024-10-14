@@ -30,7 +30,7 @@ import_resource() {
   local import_path="$2"
   local resource_type="$3"
 
-  import_command="tofu ${TOFU_OPTIONS} import '$address' '$import_path'"
+  import_command="tofu ${TOFU_OPTIONS} import '$address' $import_path"
   import_commands+=("$import_command")
   echo "Команда для импорта ресурса типа $resource_type: $import_command"
   $import_command
@@ -73,12 +73,12 @@ process_vcd_vapp_root() {
   vdc=$(echo "$plan_json" | jq -r ".planned_values.root_module.resources[$resource_index].values.vdc")
 
   if [ -n "$org" ] && [ -n "$vapp_name" ] && [ -n "$vdc" ]; then
-    import_resource "$address" "'$org.$vdc.$vapp_name'" "vcd_vapp"
+    import_resource "$address" "$org.$vdc.$vapp_name" "vcd_vapp"
 
     # Импорт сети для vApp
     network_address=$(echo "$plan_json" | jq -r ".planned_values.root_module.resources[$resource_index].values.org_network_name")
     if [ -n "$network_address" ]; then
-      import_resource "vcd_vapp_org_network.vappOrgNet" "'$org.$vdc.$vapp_name.$network_address'" "vcd_vapp_network"
+      import_resource "vcd_vapp_org_network.vappOrgNet" "$org.$vdc.$vapp_name.$network_address" "vcd_vapp_network"
     fi
   else
     echo "Пропуск ресурса $resource_index: организация, vApp или VDC отсутствуют"
@@ -97,13 +97,13 @@ process_vcd_vapp_vm() {
   vdc=$(echo "$plan_json" | jq -r ".planned_values.root_module.child_modules[$module_name].resources[$resource_index].values.vdc")
 
   if [ -n "$org" ] && [ -n "$vapp_name" ] && [ -n "$name" ]; then
-    import_resource "$address" "'$org.$vdc.$vapp_name.$name'" "vcd_vapp_vm"
+    import_resource "$address" "$org.$vdc.$vapp_name.$name" "vcd_vapp_vm"
 
     # Цикл для обработки внутренних дисков каждой VM
     local disk_count=$(echo "$plan_json" | jq ".planned_values.root_module.child_modules[$module_name].resources[$resource_index].values.internal_disk | length")
     for ((k=0; k<disk_count; k++)); do
       disk_label=$(echo "$plan_json" | jq -r ".planned_values.root_module.child_modules[$module_name].resources[$resource_index].values.internal_disk[$k].disk_id")
-      import_resource "$address.disk[$k]" "'$org.$vdc.$vapp_name.$name.$disk_label'" "vcd_vm_internal_disk"
+      import_resource '$address.disk[$k]' "$org.$vdc.$vapp_name.$name.$disk_label" "vcd_vm_internal_disk"
     done
   else
     echo "Пропуск ресурса $resource_index в $module_name: организация, vApp или имя ВМ отсутствуют"
