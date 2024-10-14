@@ -19,8 +19,10 @@ failed_imports=()
 
 # Используем jq для парсинга JSON
 module_count=$(echo "$plan_json" | jq '.planned_values.root_module.child_modules | length')
+resource_count=$(echo "$plan_json" | jq ".planned_values.root_module.resources | length")
 
 echo "Найдено child_modules: $module_count"
+echo "Найдено ресурсов на верхнем уровне: $resource_count"
 
 # Функция импорта ресурсов
 import_resource() {
@@ -61,26 +63,25 @@ process_vsphere_vm() {
   fi
 }
 
-# Функция обработки vcd_vapp
-process_vcd_vapp() {
-  local module_name="$1"
-  local resource_index="$2"
+# Функция обработки vcd_vapp на верхнем уровне
+process_vcd_vapp_root() {
+  local resource_index="$1"
 
-  address=$(echo "$plan_json" | jq -r ".planned_values.root_module.child_modules[$module_name].resources[$resource_index].address")
-  org=$(echo "$plan_json" | jq -r ".planned_values.root_module.child_modules[$module_name].resources[$resource_index].values.org")
-  vapp_name=$(echo "$plan_json" | jq -r ".planned_values.root_module.child_modules[$module_name].resources[$resource_index].values.name")
-  vdc=$(echo "$plan_json" | jq -r ".planned_values.root_module.child_modules[$module_name].resources[$resource_index].values.vdc")
+  address=$(echo "$plan_json" | jq -r ".planned_values.root_module.resources[$resource_index].address")
+  org=$(echo "$plan_json" | jq -r ".planned_values.root_module.resources[$resource_index].values.org")
+  vapp_name=$(echo "$plan_json" | jq -r ".planned_values.root_module.resources[$resource_index].values.name")
+  vdc=$(echo "$plan_json" | jq -r ".planned_values.root_module.resources[$resource_index].values.vdc")
 
   if [ -n "$org" ] && [ -n "$vapp_name" ] && [ -n "$vdc" ]; then
-    import_resource "$address" "$org.$vdc.$vapp_name" "vcd_vapp"
+    import_resource "$address" "'$org.$vdc.$vapp_name'" "vcd_vapp"
 
     # Импорт сети для vApp
-    network_address=$(echo "$plan_json" | jq -r ".planned_values.root_module.child_modules[$module_name].resources[$resource_index].values.org_network_name")
+    network_address=$(echo "$plan_json" | jq -r ".planned_values.root_module.resources[$resource_index].values.org_network_name")
     if [ -n "$network_address" ]; then
-      import_resource "vcd_vapp_org_network.vappOrgNet" "$org.$vdc.$vapp_name.$network_address" "vcd_vapp_network"
+      import_resource "vcd_vapp_org_network.vappOrgNet" "'$org.$vdc.$vapp_name.$network_address'" "vcd_vapp_network"
     fi
   else
-    echo "Пропуск ресурса $resource_index в $module_name: организация, vApp или VDC отсутствуют"
+    echo "Пропуск ресурса $resource_index: организация, vApp или VDC отсутствуют"
   fi
 }
 
@@ -96,37 +97,34 @@ process_vcd_vapp_vm() {
   vdc=$(echo "$plan_json" | jq -r ".planned_values.root_module.child_modules[$module_name].resources[$resource_index].values.vdc")
 
   if [ -n "$org" ] && [ -n "$vapp_name" ] && [ -n "$name" ]; then
-    import_resource "$address" "$org.$vdc.$vapp_name.$name" "vcd_vapp_vm"
+    import_resource "$address" "'$org.$vdc.$vapp_name.$name'" "vcd_vapp_vm"
 
     # Цикл для обработки внутренних дисков каждой VM
     local disk_count=$(echo "$plan_json" | jq ".planned_values.root_module.child_modules[$module_name].resources[$resource_index].values.internal_disk | length")
     for ((k=0; k<disk_count; k++)); do
       disk_label=$(echo "$plan_json" | jq -r ".planned_values.root_module.child_modules[$module_name].resources[$resource_index].values.internal_disk[$k].disk_id")
-      import_resource "$address.disk[$k]" "$org.$vdc.$vapp_name.$name.'$disk_label'" "vcd_vm_internal_disk"
+      import_resource "$address.disk[$k]" "'$org.$vdc.$vapp_name.$name.$disk_label'" "vcd_vm_internal_disk"
     done
   else
     echo "Пропуск ресурса $resource_index в $module_name: организация, vApp или имя ВМ отсутствуют"
   fi
 }
 
-# Функция обработки vcd_vm_internal_disk
-process_vcd_vm_internal_disk() {
-  local module_name="$1"
-  local resource_index="$2"
-
-  address=$(echo "$plan_json" | jq -r ".planned_values.root_module.child_modules[$module_name].resources[$resource_index].address")
-  vapp_name=$(echo "$plan_json" | jq -r ".planned_values.root_module.child_modules[$module_name].resources[$resource_index].values.vapp_name")
-  vm_name=$(echo "$plan_json" | jq -r ".planned_values.root_module.child_modules[$module_name].resources[$resource_index].values.vm_name")
-  disk_label=$(echo "$plan_json" | jq -r ".planned_values.root_module.child_modules[$module_name].resources[$resource_index].index_key")
-
-  if [ -n "$vapp_name" ] && [ -n "$vm_name" ]; then
-    import_resource "$address" "$vapp_name.$vm_name.'$disk_label'" "vcd_vm_internal_disk"
-  else
-    echo "Пропуск ресурса $resource_index в $module_name: vApp или VM отсутствуют"
-  fi
-}
-
 # Основной цикл обработки модулей и ресурсов
+for ((i=0; i<resource_count; i++)); do
+  resource_type=$(echo "$plan_json" | jq -r ".planned_values.root_module.resources[$i].type")
+  echo "Обрабатывается ресурс $i на верхнем уровне типа $resource_type"
+
+  case $resource_type in
+    "vcd_vapp")
+      process_vcd_vapp_root "$i"
+      ;;
+    *)
+      echo "Пропуск ресурса $i на верхнем уровне: тип не поддерживается"
+      ;;
+  esac
+done
+
 for ((i=0; i<module_count; i++)); do
   module_name=$(echo "$plan_json" | jq -r ".planned_values.root_module.child_modules[$i].address")
   resource_count=$(echo "$plan_json" | jq ".planned_values.root_module.child_modules[$i].resources | length")
@@ -140,14 +138,8 @@ for ((i=0; i<module_count; i++)); do
       "vsphere_virtual_machine")
         process_vsphere_vm "$i" "$j"
         ;;
-      "vcd_vapp")
-        process_vcd_vapp "$i" "$j"
-        ;;
       "vcd_vapp_vm")
         process_vcd_vapp_vm "$i" "$j"
-        ;;
-      "vcd_vm_internal_disk")
-        process_vcd_vm_internal_disk "$i" "$j"
         ;;
       *)
         echo "Пропуск ресурса $j в $module_name: тип не поддерживается"
