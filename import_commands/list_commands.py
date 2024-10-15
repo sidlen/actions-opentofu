@@ -1,7 +1,7 @@
 import json
 import os
 
-TOFU_OPTIONS = f"-chdir={os.getenv('MANIFEST_DIR')}"
+TOFU_OPTIONS = f"-chdir={os.getenv('MANIFEST_PATH')}"
 PLAN_FILE = os.getenv('PLAN_FILE', 'plan.json')
 
 # Чтение JSON плана из файла
