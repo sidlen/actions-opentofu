@@ -16,7 +16,7 @@ runs:
   steps:
     - name: Generate import commands
       id: import_commands
-      uses: https://github.com/sidlen/actions-opentofu/import_commands@v1.2.1
+      uses: ./import_commands
       env:
         manifest_path: "${{ inputs.manifest_path }}"
         plan_json: "${{ inputs.plan_json }}"
