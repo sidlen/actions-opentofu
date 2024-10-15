@@ -14,12 +14,20 @@ inputs:
 runs:
   using: 'composite'
   steps:
-    - name: Tofu import
-      run: |
-        chmod +x "${{ gitea.action_path }}"/generate_import.sh
-        "${{ gitea.action_path }}"/generate_import.sh
-      shell: bash
+    - name: Generate import commands
+      id: import_commands
+      uses: https://github.com/sidlen/actions-opentofu/import_commands@v1.2.0-dev-08
       env:
-        TF_VAR_OWNER: "${{ gitea.actor }}"
-        TOFU_MANIFEST_DIR: "${{ inputs.manifest_path }}"
-        TOFU_WORKSPACE: "${{ gitea.workspace }}"
+        manifest_path: "${{ inputs.manifest_path }}"
+        plan_json: "${{ inputs.plan_json }}"
+    - name: DEBUG show imports script
+      shell: bash
+      run: cat import_commands.sh
+    - name: DEBUG
+      run: ls -l
+      shell: bash
+    - name: Run import commands
+      shell: bash
+      run: |
+        chmod +x import_commands.sh
+        ./import_commands.sh

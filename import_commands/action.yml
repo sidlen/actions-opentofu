@@ -1,0 +1,22 @@
+name: 'Generate import commands'
+description: 'Generate import commands based on plan'
+author: 'sidlen'
+inputs:
+  manifest_path:
+    description: 'Realative path to directory with tofu (terraform) manifests files'
+    required: false
+    default: "${{ env.TOFU_MANIFEST_DIR }}"
+  plan_json:
+    description: 'Saved plan.json file from plan action'
+    required: true
+    default: "plan.json"
+
+runs:
+  using: 'docker'
+  image: 'Dockerfile'
+  env:
+    MANIFEST_PATH: "${{ inputs.manifest_path }}"
+    PLAN_FILE: "${{ inputs.plan_json }}"
+outputs:
+  list_commands:
+    description: 'List tofu import commands'
