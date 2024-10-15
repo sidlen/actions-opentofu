@@ -20,6 +20,8 @@ runs:
       with:
         manifest_path: "${{ inputs.manifest_path }}"
         plan_json: "${{ inputs.plan_json }}"
+      env:
+        WORKSPACE: "${{ gitea.workspace }}"
     - name: DEBUG show imports script
       shell: bash
       run: |
