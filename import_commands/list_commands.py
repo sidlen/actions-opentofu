@@ -15,6 +15,7 @@ if not plan_json:
 
 # Генерация команд tofu import
 import_commands = []
+processed_resources = set()
 
 # Основной цикл обработки ресурсов
 child_modules = plan_json.get("planned_values", {}).get("root_module", {}).get("child_modules", [])
@@ -24,9 +25,11 @@ print(f"Найдено child_modules: {len(child_modules)}")
 print(f"Найдено ресурсов на верхнем уровне: {len(resources_root)}")
 
 def import_resource(address, import_path, resource_type):
-    import_command = f"tofu {TOFU_OPTIONS} import '{address}' '{import_path}'"
-    import_commands.append(import_command)
-    print(f"Команда для импорта ресурса типа {resource_type}: {import_command}")
+    if address not in processed_resources:
+        import_command = f"tofu {TOFU_OPTIONS} import '{address}' '{import_path}'"
+        import_commands.append(import_command)
+        processed_resources.add(address)
+        print(f"Команда для импорта ресурса типа {resource_type}: {import_command}")
 
 # Функция для вычисления ID диска на основе bus_number и unit_number
 def calculate_disk_id(bus_number, unit_number):
