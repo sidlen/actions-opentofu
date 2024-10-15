@@ -3,6 +3,7 @@ import json
 import boto3
 import requests
 import os
+import base64
 from botocore.exceptions import NoCredentialsError, PartialCredentialsError
 from requests.auth import HTTPBasicAuth
 from datetime import datetime
@@ -28,15 +29,19 @@ def download_state_from_consul():
     consul_scheme = os.getenv('TF_CONSUL_SCHEME', 'http')
     access_token = os.getenv('TF_ACCESS_TOKEN')
     state_key = os.getenv('TF_PATH')
-    consul_url = f"{consul_scheme}://{consul_address}/v1/kv/{state_key}.tfstate"
+    consul_url = f"{consul_scheme}://{consul_address}/v1/kv/opentofu/{state_key}.tfstate"
     headers = {'X-Consul-Token': access_token} if access_token else {}
 
     try:
         response = requests.get(consul_url, headers=headers)
         if response.status_code == 200:
+            encoded_data = response.json()[0]['Value']
+            print("Downloaded state file from Consul (base64):\n", encoded_data)
+            decoded_data = base64.b64decode(encoded_data).decode('utf-8')
             with open('terraform_state.json', 'w') as file:
-                file.write(response.json()[0]['Value'])
+                file.write(decoded_data)
             print("State file downloaded from Consul")
+            print("Downloaded state file (decoded):\n", decoded_data)
         else:
             print("Failed to download state file from Consul.")
             exit(1)
@@ -69,12 +74,12 @@ def upload_state_to_consul():
     consul_scheme = os.getenv('TF_CONSUL_SCHEME', 'http')
     access_token = os.getenv('TF_ACCESS_TOKEN')
     state_key = os.getenv('TF_PATH')
-    consul_url = f"{consul_scheme}://{consul_address}/v1/kv/{state_key}"
+    consul_url = f"{consul_scheme}://{consul_address}/v1/kv/opentofu/{state_key}.tfstate"
     headers = {'X-Consul-Token': access_token} if access_token else {}
 
     try:
         backup_state_key = f"{state_key}.backup_{datetime.now().strftime('%Y_%m_%d_%H-%M')}"
-        backup_url = f"{consul_scheme}://{consul_address}/v1/kv/{backup_state_key}"
+        backup_url = f"{consul_scheme}://{consul_address}/v1/kv/opentofu/{backup_state_key}"
         with open('terraform_state.json', 'r') as file:
             state_content = file.read()
         response = requests.put(backup_url, headers=headers, data=state_content)
@@ -178,19 +183,19 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     # Скачиваем стейт в зависимости от источника
-    if args.state:
+    if os.getenv('TF_S3_ADDRESS') and os.getenv('TF_BUCKET') and os.getenv('TF_KEY'):
+        bucket_name = os.getenv('TF_BUCKET')
+        state_key = os.getenv('TF_KEY')
+        download_state_from_s3(bucket_name, state_key)
+        state_file = 'terraform_state.json'
+    elif os.getenv('TF_CONSUL_ADDRESS') and os.getenv('TF_PATH'):
+        download_state_from_consul()
+        state_file = 'terraform_state.json'
+    elif args.state:
         state_file = args.state
     else:
-        if os.getenv('TF_S3_ADDRESS') and os.getenv('TF_BUCKET') and os.getenv('TF_KEY'):
-            bucket_name = os.getenv('TF_BUCKET')
-            state_key = os.getenv('TF_KEY')
-            download_state_from_s3(bucket_name, state_key)
-        elif os.getenv('TF_CONSUL_ADDRESS') and os.getenv('TF_PATH'):
-            download_state_from_consul()
-        else:
-            print("No source provided for downloading the state file. Use environment variables for S3 or Consul.")
-            exit(1)
-        state_file = 'terraform_state.json'
+        print("No source provided for downloading the state file. Use environment variables for S3 or Consul.")
+        exit(1)
 
     # Обновляем стейт на основе плана
     update_state_from_plan(state_file, args.plan)
