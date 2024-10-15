@@ -16,7 +16,7 @@ runs:
   steps:
     - name: Generate import commands
       id: import_commands
-      uses: https://github.com/sidlen/actions-opentofu/import_commands@v1.2.0-dev-07
+      uses: https://github.com/sidlen/actions-opentofu/import_commands@v1.2.0-dev-08
       env:
         manifest_path: "${{ inputs.manifest_path }}"
         plan_json: "${{ inputs.plan_json }}"
@@ -29,5 +29,5 @@ runs:
     - name: Run import commands
       shell: bash
       run: |
-        chmod +x import-commands.sh
-        ./import-commands.sh
+        chmod +x import_commands.sh
+        ./import_commands.sh
