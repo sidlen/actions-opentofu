@@ -36,12 +36,10 @@ def download_state_from_consul():
         response = requests.get(consul_url, headers=headers)
         if response.status_code == 200:
             encoded_data = response.json()[0]['Value']
-            print("Downloaded state file from Consul (base64):\n", encoded_data)
             decoded_data = base64.b64decode(encoded_data).decode('utf-8')
             with open('terraform_state.json', 'w') as file:
                 file.write(decoded_data)
             print("State file downloaded from Consul")
-            print("Downloaded state file (decoded):\n", decoded_data)
         else:
             print("Failed to download state file from Consul.")
             exit(1)
@@ -175,6 +173,10 @@ def update_state_from_plan(state_file, plan_file):
         # Сохраняем отладочную информацию об изменениях
         with open('changes_log.json', 'w') as log_file:
             json.dump(changes_log, log_file, indent=2)
+            
+        # Выводим содержимое файла changes_log.json
+        print("Вот что изменилось в opentofu state:\n")
+        print(json.dumps(changes_log, indent=2))
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Update Terraform state based on plan")
