@@ -22,10 +22,13 @@ runs:
         plan_json: "${{ inputs.plan_json }}"
     - name: DEBUG show imports script
       shell: bash
-      run: cat import_commands.sh
-    - name: DEBUG
-      run: ls -l
-      shell: bash
+      run: |
+        echo " "
+        echo "_________________________________"
+        echo "Команды импорта:"
+        cat import_commands.sh
+        echo "_________________________________"
+        echo " "
     - name: Run import commands
       shell: bash
       run: |
