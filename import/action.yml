@@ -16,7 +16,7 @@ runs:
   steps:
     - name: Generate import commands
       id: import_commands
-      uses: ./import_commands
+      uses: ../import_commands
       with:
         manifest_path: "${{ inputs.manifest_path }}"
         plan_json: "${{ inputs.plan_json }}"
