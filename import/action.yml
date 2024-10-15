@@ -16,12 +16,10 @@ runs:
   steps:
     - name: Generate import commands
       id: import_commands
-      uses: ../import_commands
+      uses: https://github.com/sidlen/actions-opentofu/import_commands@v1.2.8
       with:
         manifest_path: "${{ inputs.manifest_path }}"
         plan_json: "${{ inputs.plan_json }}"
-      env:
-        WORKSPACE: "${{ gitea.workspace }}"
     - name: DEBUG show imports script
       shell: bash
       run: |
