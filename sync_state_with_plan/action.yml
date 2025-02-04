@@ -10,6 +10,10 @@ inputs:
     description: 'S3 server address'
     required: false
     default: "${{ env.S3_ADDRESS }}"
+  s3_scheme:
+    description: 'Specifies what protocol to use when talking to the given s3_address, either http or https'
+    required: false
+    default: 'https'
   s3_bucket:
     description: 'S3 bucket name (required if backend_type is s3)'
     required: false
@@ -51,6 +55,7 @@ runs:
     TF_ACCESS_TOKEN: "${{ inputs.consul_token }}"
     TF_PATH: "${{ inputs.consul_path }}"
     TF_S3_ADDRESS: "${{ inputs.s3_address }}"
+    TF_S3_SCHEME: "${{ inputs.s3_scheme }}"
     TF_BUCKET: "${{ inputs.s3_bucket }}"
     TF_KEY: "${{ inputs.s3_path }}"
     TF_ACCESS_KEY: "${{ inputs.s3_key }}"

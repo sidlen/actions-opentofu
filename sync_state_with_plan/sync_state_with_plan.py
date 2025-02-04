@@ -10,14 +10,15 @@ from datetime import datetime
 
 # Функция для скачивания стейта из S3
 def download_state_from_s3(bucket_name, state_key):
+    s3_scheme = os.getenv('TF_S3_SCHEME', 'http')
     s3 = boto3.client(
         's3',
         aws_access_key_id=os.getenv('TF_ACCESS_KEY'),
         aws_secret_access_key=os.getenv('TF_SECRET_KEY'),
-        endpoint_url=os.getenv('TF_S3_ADDRESS')
+        endpoint_url=f"{s3_scheme}://{os.getenv('TF_S3_ADDRESS')}"
     )
     try:
-        s3.download_file(bucket_name, state_key, 'terraform_state.json')
+        s3.download_file(bucket_name, f"{state_key}.tfstate", 'terraform_state.json')
         print("State file downloaded from S3")
     except (NoCredentialsError, PartialCredentialsError):
         print("Credentials not available for S3.")
@@ -49,18 +50,19 @@ def download_state_from_consul():
 
 # Функция для загрузки стейта в S3
 def upload_state_to_s3(bucket_name, state_key):
+    s3_scheme = os.getenv('TF_S3_SCHEME', 'http')
     s3 = boto3.client(
         's3',
         aws_access_key_id=os.getenv('TF_ACCESS_KEY'),
         aws_secret_access_key=os.getenv('TF_SECRET_KEY'),
-        endpoint_url=os.getenv('TF_S3_ADDRESS')
+        endpoint_url=f"{s3_scheme}://{os.getenv('TF_S3_ADDRESS')}"
     )
     try:
-        backup_state_key = f"{state_key}.backup_{datetime.now().strftime('%Y_%m_%d_%H-%M')}"
-        s3.copy_object(Bucket=bucket_name, CopySource={'Bucket': bucket_name, 'Key': state_key}, Key=backup_state_key)
+        backup_state_key = f"{state_key}.tfstate.backup_{datetime.now().strftime('%Y_%m_%d_%H-%M')}"
+        s3.copy_object(Bucket=bucket_name, CopySource={'Bucket': bucket_name, 'Key': f"{state_key}.tfstate"}, Key=backup_state_key)
         print(f"Backup state file created in S3: {backup_state_key}")
 
-        s3.upload_file('new_terraform_state.json', bucket_name, state_key)
+        s3.upload_file('new_terraform_state.json', bucket_name, f"{state_key}.tfstate")
         print("State file uploaded to S3")
     except (NoCredentialsError, PartialCredentialsError):
         print("Credentials not available for S3.")

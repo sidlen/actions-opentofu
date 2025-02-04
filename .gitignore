@@ -1,0 +1,4 @@
+.venv
+.vscode
+plan.json
+terraform_state.json
