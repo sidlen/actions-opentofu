@@ -34,3 +34,5 @@ runs:
       run: |
         chmod +x import_commands.sh
         ./import_commands.sh
+      env:
+        TF_VAR_OWNER: "${{ gitea.actor }}"
