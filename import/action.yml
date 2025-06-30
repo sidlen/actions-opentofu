@@ -18,6 +18,13 @@ inputs:
 runs:
   using: 'composite'
   steps:
+    - name: DEBUG start import commands
+      shell: bash
+      run: |
+        echo " "
+        echo "_________________________________"
+        echo "start generate import commands"
+        echo "_________________________________"
     - name: Generate import commands
       id: import_commands
       uses: https://github.com/sidlen/actions-opentofu/import_commands@v1.2.11
@@ -25,6 +32,13 @@ runs:
         manifest_path: "${{ inputs.manifest_path }}"
         plan_json: "${{ inputs.plan_json }}"
         parallelism: "${{ inputs.parallelism }}"
+    - name: DEBUG end import commands
+      shell: bash
+      run: |
+        echo " "
+        echo "_________________________________"
+        echo "end generate import commands"
+        echo "_________________________________"
     - name: DEBUG show imports script
       shell: bash
       run: |
