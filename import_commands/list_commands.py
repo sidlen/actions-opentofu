@@ -3,6 +3,7 @@ import os
 
 TOFU_OPTIONS = f"-chdir={os.getenv('MANIFEST_PATH')}"
 PLAN_FILE = os.getenv('PLAN_FILE', 'plan.json')
+parallelism = f"-parallelism={os.getenv('PARALLELISM')}"
 
 # Чтение JSON плана из файла
 with open(PLAN_FILE, "r") as file:
@@ -26,7 +27,7 @@ print(f"Найдено ресурсов на верхнем уровне: {len(r
 
 def import_resource(address, import_path, resource_type):
     if address not in processed_resources:
-        import_command = f"tofu {TOFU_OPTIONS} import '{address}' '{import_path}'"
+        import_command = f"tofu {TOFU_OPTIONS} import {parallelism} '{address}' '{import_path}'"
         import_commands.append(import_command)
         processed_resources.add(address)
         print(f"Команда для импорта ресурса типа {resource_type}: {import_command}")

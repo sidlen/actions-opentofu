@@ -10,16 +10,21 @@ inputs:
     description: 'Saved plan.json file from plan action'
     required: true
     default: "plan.json"
+  parallelism:
+    description: 'parallelism parametr for tofu import'
+    required: true
+    default: "10"
 
 runs:
   using: 'composite'
   steps:
     - name: Generate import commands
       id: import_commands
-      uses: https://github.com/sidlen/actions-opentofu/import_commands@v1.2.8
+      uses: https://github.com/sidlen/actions-opentofu/import_commands@v1.2.11
       with:
         manifest_path: "${{ inputs.manifest_path }}"
         plan_json: "${{ inputs.plan_json }}"
+        parallelism: "${{ inputs.parallelism }}"
     - name: DEBUG show imports script
       shell: bash
       run: |

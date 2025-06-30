@@ -10,6 +10,10 @@ inputs:
     description: 'Saved plan.json file from plan action'
     required: true
     default: "plan.json"
+  parallelism:
+    description: 'parallelism parametr for tofu import'
+    required: true
+    default: "10"
 
 runs:
   using: 'docker'
@@ -17,6 +21,7 @@ runs:
   env:
     MANIFEST_PATH: "${{ inputs.manifest_path }}"
     PLAN_FILE: "${{ inputs.plan_json }}"
+    PARALLELISM: "${{ inputs.parallelism }}"
 outputs:
   list_commands:
     description: 'List tofu import commands'
