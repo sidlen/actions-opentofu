@@ -4,6 +4,8 @@ import boto3
 import requests
 import os
 import base64
+import math
+import hashlib
 from botocore.exceptions import NoCredentialsError, PartialCredentialsError
 from requests.auth import HTTPBasicAuth
 from datetime import datetime
@@ -24,29 +26,54 @@ def download_state_from_s3(bucket_name, state_key):
         print("Credentials not available for S3.")
         exit(1)
 
+# Функция для скачивания чанка стейта из consul
+def download_chunk(consul_url, headers):
+    response = requests.get(consul_url, headers=headers)
+    response.raise_for_status()
+    data = response.json()
+    encoded = data[0]['Value']
+    return base64.b64decode(encoded).decode('utf-8')
+
 # Функция для скачивания стейта из Consul
 def download_state_from_consul():
     consul_address = os.getenv('TF_CONSUL_ADDRESS')
     consul_scheme = os.getenv('TF_CONSUL_SCHEME', 'http')
     access_token = os.getenv('TF_ACCESS_TOKEN')
     state_key = os.getenv('TF_PATH')
-    consul_url = f"{consul_scheme}://{consul_address}/v1/kv/opentofu/{state_key}.tfstate"
+    base_url = f"{consul_scheme}://{consul_address}/v1/kv/opentofu/{state_key}.tfstate"
     headers = {'X-Consul-Token': access_token} if access_token else {}
 
-    try:
-        response = requests.get(consul_url, headers=headers)
-        if response.status_code == 200:
-            encoded_data = response.json()[0]['Value']
-            decoded_data = base64.b64decode(encoded_data).decode('utf-8')
-            with open('terraform_state.json', 'w') as file:
-                file.write(decoded_data)
-            print("State file downloaded from Consul")
-        else:
-            print("Failed to download state file from Consul.")
-            exit(1)
-    except requests.RequestException as e:
-        print(f"Error connecting to Consul: {e}")
+    response = requests.get(base_url, headers=headers)
+    if response.status_code != 200:
+        print("Failed to download state file from Consul.")
         exit(1)
+
+    data = response.json()[0]
+    decoded_data = base64.b64decode(data['Value']).decode('utf-8')
+
+    try:
+        obj = json.loads(decoded_data)
+    except json.JSONDecodeError:
+        # Если не JSON, записываем как есть
+        with open('terraform_state.json', 'w') as f:
+            f.write(decoded_data)
+        print("State file downloaded from Consul")
+        return
+
+    if 'chunks' in obj:
+        chunks = obj['chunks']
+        full_state = ''
+        for chunk_key in chunks:
+            chunk_url = f"{consul_scheme}://{consul_address}/v1/kv/{chunk_key}"
+            chunk_data = download_chunk(chunk_url, headers)
+            full_state += chunk_data
+        with open('terraform_state.json', 'w') as f:
+            f.write(full_state)
+    else:
+        with open('terraform_state.json', 'w') as f:
+            f.write(decoded_data)
+
+    print("State file downloaded from Consul")
 
 # Функция для загрузки стейта в S3
 def upload_state_to_s3(bucket_name, state_key):
@@ -68,38 +95,59 @@ def upload_state_to_s3(bucket_name, state_key):
         print("Credentials not available for S3.")
         exit(1)
 
+# Функция для загрузки чанка стейта в consul
+def upload_chunk(consul_url, headers, data):
+    response = requests.put(consul_url, headers=headers, data=data)
+    if response.status_code != 200:
+        print(f"Failed to upload chunk {consul_url}")
+        exit(1)
+
 # Функция для загрузки стейта в Consul
 def upload_state_to_consul():
     consul_address = os.getenv('TF_CONSUL_ADDRESS')
     consul_scheme = os.getenv('TF_CONSUL_SCHEME', 'http')
     access_token = os.getenv('TF_ACCESS_TOKEN')
     state_key = os.getenv('TF_PATH')
-    consul_url = f"{consul_scheme}://{consul_address}/v1/kv/opentofu/{state_key}.tfstate"
+    base_key = f"opentofu/{state_key}.tfstate"
     headers = {'X-Consul-Token': access_token} if access_token else {}
 
-    try:
-        backup_state_key = f"{state_key}.backup_{datetime.now().strftime('%Y_%m_%d_%H-%M')}"
-        backup_url = f"{consul_scheme}://{consul_address}/v1/kv/opentofu/{backup_state_key}"
-        with open('terraform_state.json', 'r') as file:
-            state_content = file.read()
-        response = requests.put(backup_url, headers=headers, data=state_content)
-        if response.status_code == 200:
-            print(f"Backup state file created in Consul: {backup_state_key}")
-        else:
-            print("Failed to create backup state file in Consul.")
-            exit(1)
+    with open('terraform_state.json', 'r') as f:
+        state_content = f.read()
 
-        with open('new_terraform_state.json', 'r') as file:
-            state_content = file.read()
-        response = requests.put(consul_url, headers=headers, data=state_content)
-        if response.status_code == 200:
-            print("State file uploaded to Consul")
-        else:
-            print("Failed to upload state file to Consul.")
-            exit(1)
-    except requests.RequestException as e:
-        print(f"Error connecting to Consul: {e}")
+    # Создаём резервную копию
+    backup_key = f"opentofu/{state_key}.backup_{datetime.now().strftime('%Y_%m_%d_%H-%M')}"
+    backup_url = f"{consul_scheme}://{consul_address}/v1/kv/{backup_key}"
+    backup_resp = requests.put(backup_url, headers=headers, data=state_content)
+    if backup_resp.status_code != 200:
+        print("Failed to create backup state file in Consul.")
         exit(1)
+    print(f"Backup state file created in Consul: {backup_key}")
+
+    # Разбиваем на чанки
+    chunk_size = 512 * 1024  # 512 Кб
+    total_chunks = math.ceil(len(state_content) / chunk_size)
+    hash_digest = hashlib.md5(state_content.encode()).hexdigest()
+
+    chunk_keys = []
+    for i in range(total_chunks):
+        chunk_key = f"opentofu/{state_key}.tfstate/tfstate.{hash_digest}/{i}"
+        chunk_url = f"{consul_scheme}://{consul_address}/v1/kv/{chunk_key}"
+        chunk_data = state_content[i*chunk_size:(i+1)*chunk_size]
+        upload_chunk(chunk_url, headers, chunk_data)
+        chunk_keys.append(chunk_key)
+
+    # Записываем основной ключ с метаданными
+    main_obj = {
+        "chunks": chunk_keys,
+        "current-hash": hash_digest
+    }
+    main_url = f"{consul_scheme}://{consul_address}/v1/kv/{base_key}"
+    main_resp = requests.put(main_url, headers=headers, data=json.dumps(main_obj))
+    if main_resp.status_code != 200:
+        print("Failed to upload main state metadata to Consul.")
+        exit(1)
+
+    print("State file uploaded to Consul with chunking")
 
 # Функция для обновления стейта на основе плана
 def update_state_from_plan(state_file, plan_file):
