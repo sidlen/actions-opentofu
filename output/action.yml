@@ -15,8 +15,7 @@ runs:
     - name: Tofu output
       id: tofu_output
       run: |
-        json=$(tofu -chdir="${{ gitea.workspace }}/${{ inputs.manifest_path }}" output -json)
-        echo "$json" > /tmp/tofu_output.json
+        json=$(tofu -chdir="${{ gitea.workspace }}/${{ inputs.manifest_path }}" output -json | jq -c '.')
         echo "json=$json" >> "$GITHUB_OUTPUT"
       shell: bash
       env:
