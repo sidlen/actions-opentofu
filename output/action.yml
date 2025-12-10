@@ -17,7 +17,7 @@ runs:
       run: |
         json=$(tofu -chdir="${{ gitea.workspace }}/${{ inputs.manifest_path }}" output -json)
         echo "$json" > /tmp/tofu_output.json
-        echo "::set-output name=json::$json"
+        echo "json=$json" >> "$GITHUB_OUTPUT"
       shell: bash
       env:
         TF_VAR_OWNER: "${{ gitea.actor }}"
