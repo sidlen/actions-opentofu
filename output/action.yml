@@ -15,13 +15,14 @@ runs:
     - name: Tofu output
       id: tofu_output
       run: |
-        json=$(tofu -chdir="${{ gitea.workspace }}/${{ inputs.manifest_path }}" output -json | jq -c '.')
-        echo "json=$json" >> "$GITHUB_OUTPUT"
+        json=$(tofu -chdir="${{ gitea.workspace }}/${{ inputs.manifest_path }}" output -json)
+        json_b64=$(echo "$json" | base64 | tr -d '\n')
+        echo "json_b64=$json_b64" >> "$GITHUB_OUTPUT"
       shell: bash
       env:
         TF_VAR_OWNER: "${{ gitea.actor }}"
 
 outputs:
-  json:
-    description: "All Tofu outputs in JSON format"
-    value: ${{ steps.tofu_output.outputs.json }}
+  b64_json:
+    description: "All Tofu outputs in base64-encoded JSON format"
+    value: ${{ steps.tofu_output.outputs.json_b64 }}
