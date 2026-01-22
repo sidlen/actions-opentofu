@@ -27,7 +27,7 @@ runs:
         echo "_________________________________"
     - name: Generate import commands
       id: import_commands
-      uses: https://github.com/sidlen/actions-opentofu/import_commands@v1.2.11
+      uses: https://github.com/sidlen/actions-opentofu/import_commands@v1.3.2
       with:
         manifest_path: "${{ inputs.manifest_path }}"
         plan_json: "${{ inputs.plan_json }}"
