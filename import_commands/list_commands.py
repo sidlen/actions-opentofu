@@ -27,7 +27,7 @@ print(f"Найдено ресурсов на верхнем уровне: {len(r
 
 def import_resource(address, import_path, resource_type):
     if address not in processed_resources:
-        import_command = f"tofu {TOFU_OPTIONS} import {parallelism} '{address}' '{import_path}'"
+        import_command = f"tofu {TOFU_OPTIONS} import {parallelism} -target='{address}' '{address}' '{import_path}'"
         import_commands.append(import_command)
         processed_resources.add(address)
         print(f"Команда для импорта ресурса типа {resource_type}: {import_command}")
