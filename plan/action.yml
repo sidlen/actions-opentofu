@@ -22,8 +22,9 @@ runs:
         echo DEBUG
         echo "$TF_VAR_VSPHERE_USER"
         echo $TF_VAR_VSPHERE_USER
-        echo "$tf_var_vsphere_user"
-        echo $tf_var_vsphere_user
+        echo "$TF_VAR_vsphere_user"
+        echo $TF_VAR_vsphere_user
+        echo ${{ env.TF_VAR_vsphere_user }}
         if [ "${{ inputs.save_plan }}" == "true" ]; then
           tofu -chdir="${{ gitea.workspace }}"/"${{ inputs.manifest_path }}" plan -out=tf_plan
           tofu -chdir="${{ gitea.workspace }}"/"${{ inputs.manifest_path }}" show -json tf_plan > plan.json
